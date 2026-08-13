@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Environment and secrets
+.env
+.env.*
+*.env
+local.settings.json
+secrets.*
+*.secret
+
+# Azure Functions local artifacts
+.azurefunctions/
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# OS / temporary files
+Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.log
+
+# Test and generated artifacts
+.tmp/
+tmp/
+out/
+output/
+Procesados MSG/
+Entrada MSG/
