@@ -602,3 +602,104 @@ Se agregaron o ampliaron tests para cubrir:
 * Ejecutar una prueba real con archivo `.msg` de ejemplo.
 * Confirmar el comportamiento exacto de adjuntos `WEB`, `UNSUPPORTED` y `BROKEN` con muestras reales.
 * Validar límites de tamaño por expansión Base64 antes de producción.
+
+---
+
+## Etapa 4 - GitHub Actions y despliegue OIDC
+
+### Fecha
+
+* 2026-08-13
+
+### Workflow creado
+
+* `.github/workflows/deploy-azure-function.yml`
+
+### Trigger
+
+* `push` sobre `main`
+* `workflow_dispatch`
+
+### Permisos
+
+* `contents: read`
+* `id-token: write`
+
+`id-token: write` se configuró de forma explícita para autenticación OIDC con Azure.
+
+### Versión Python
+
+* `actions/setup-python@v5`
+* `python-version: "3.12"`
+
+### Estrategia de tests
+
+El job `test-and-deploy` ejecuta:
+
+* `python -m pip install --upgrade pip`
+* `python -m pip install -r requirements.txt`
+* `python -m pytest -v`
+
+El deployment queda secuenciado después de los tests dentro del mismo job, por lo que no se ejecuta si `pytest` falla.
+
+### Estrategia de autenticación OIDC
+
+Se configuró `azure/login@v2` con:
+
+* `client-id: ${{ vars.AZURE_CLIENT_ID }}`
+* `tenant-id: ${{ vars.AZURE_TENANT_ID }}`
+* `subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}`
+
+No se utilizó:
+
+* `creds`
+* client secret
+* publish profile
+* credenciales embebidas en YAML
+
+### Estrategia de deployment
+
+Se configuró `Azure/functions-action@v1` con:
+
+* `app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}`
+* `package: "."`
+* `remote-build: true`
+
+No se incluyó:
+
+* `publish-profile`
+* `scm-do-build-during-deployment`
+* `enable-oryx-build`
+
+### Archivos modificados
+
+* `.github/workflows/deploy-azure-function.yml`
+* `README.md`
+* `docs/EVIDENCIAS.md`
+
+### Referencias oficiales consultadas
+
+Fuentes oficiales revisadas para esta etapa:
+
+* Microsoft Learn:
+  * `Deploy to Azure Functions by using GitHub Actions`
+  * `Authenticate to Azure from GitHub Actions by OpenID Connect`
+* Repositorios oficiales:
+  * `Azure/functions-action`
+  * `Azure/login`
+
+### Validaciones locales posibles
+
+| Comando | Exit code | Resultado |
+| --- | --- | --- |
+| `python -m pytest -v` | Pendiente de ejecución real | El entorno local debe ejecutar este comando antes de publicar el workflow. |
+
+No se afirmó éxito en GitHub Actions ni en Azure porque esta etapa no incluye `commit`, `push` ni corrida remota real del workflow.
+
+### Pendientes
+
+* Ejecutar `python -m pytest -v` localmente con el entorno funcional.
+* Hacer `commit`.
+* Hacer `push`.
+* Verificar la primera ejecución real en GitHub Actions.
+* Validar el deployment real sobre Azure una vez publicado el workflow.

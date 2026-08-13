@@ -92,3 +92,23 @@ El MSG original también vuelve en Base64 para que Power Automate pueda guardarl
 ## Limitaciones
 
 El uso de Base64 incrementa el tamaño transferido y el consumo de memoria. Antes de producción habrá que validar el tamaño máximo de MSG y adjuntos aceptable para Azure Functions y Power Automate.
+
+## CI/CD
+
+El repositorio incluye un workflow de GitHub Actions en `.github/workflows/deploy-azure-function.yml`.
+
+Cada `push` a `main` y cada ejecución manual con `workflow_dispatch`:
+
+* instala dependencias desde `requirements.txt`;
+* ejecuta `python -m pytest -v`;
+* si los tests pasan, GitHub se autentica en Azure mediante OIDC;
+* luego despliega la Function App `func-iapser-msg-extractor-eus`.
+
+El workflow usa `azure/login@v2` con `id-token: write` y `Azure/functions-action@v1`.
+
+No utiliza:
+
+* publish profile;
+* client secret;
+* service principal secret;
+* credenciales Azure hardcodeadas.
