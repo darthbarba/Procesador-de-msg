@@ -703,3 +703,44 @@ No se afirmó éxito en GitHub Actions ni en Azure porque esta etapa no incluye 
 * Hacer `push`.
 * Verificar la primera ejecución real en GitHub Actions.
 * Validar el deployment real sobre Azure una vez publicado el workflow.
+
+---
+
+## Etapa 5 - Procesamiento end-to-end con Power Automate
+
+### Fecha
+
+* 2026-08-13
+
+### Circuito validado
+
+Se validó exitosamente el siguiente circuito completo:
+
+`SharePoint Entrada MSG → Power Automate → Azure Function → procesamiento extract-msg → respuesta JSON → Power Automate → SharePoint Procesados msg`
+
+### Resultado de la prueba end-to-end
+
+La prueba real confirmó:
+
+* detección automática de un `.msg` nuevo;
+* obtención del contenido del MSG;
+* llamada HTTP exitosa a la Azure Function;
+* análisis de la respuesta JSON;
+* creación automática de una carpeta por MSG;
+* almacenamiento del MSG original;
+* creación del archivo con los datos y cuerpo del correo;
+* extracción de los adjuntos;
+* reconstrucción de los adjuntos desde Base64;
+* almacenamiento de los adjuntos en SharePoint;
+* validación visual de los archivos resultantes.
+
+### Evidencia visual
+
+![Captura del flujo en Power Automate](evidencias/Captura%20de%20pantalla%202026-08-13%20190653.png)
+
+![Captura de los archivos generados en SharePoint](evidencias/Captura%20de%20pantalla%202026-08-13%20191002.png)
+
+### Observaciones
+
+* La evidencia visual ya se encuentra almacenada en `docs/evidencias/`.
+* Esta etapa documenta una prueba exitosa del circuito completo, sin modificar código ni infraestructura.
