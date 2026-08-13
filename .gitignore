@@ -30,6 +30,7 @@ secrets.*
 
 # Azure Functions local artifacts
 .azurefunctions/
+.python_packages/
 
 # VS Code
 .vscode/*

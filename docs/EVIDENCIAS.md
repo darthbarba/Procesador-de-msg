@@ -252,3 +252,353 @@ Salida real de `git status --short`:
 * Evaluar límites de tamaño, memoria y tiempos para MSG con adjuntos grandes.
 * Añadir pruebas automatizadas con casos de MSG válidos, corruptos y con adjuntos.
 * Incorporar luego la estructura mínima de Azure Functions sin acoplarla a SharePoint.
+
+---
+
+## Etapa 2 - Creación de Azure Function local
+
+### Fecha
+
+* 2026-08-13
+
+### Branch
+
+* `main`
+
+### HEAD inicial
+
+* `88a621660e4a666c66ac9e2f03492f780946bf3e`
+
+### Python
+
+* Según `.venv/pyvenv.cfg`, el entorno virtual fue creado con Python `3.12.10`.
+* La validación real `python --version` no pudo ejecutarse porque el entorno virtual apunta a `C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe` y ese ejecutable no está disponible.
+
+### Ubicación del intérprete
+
+* Según `.venv/pyvenv.cfg`: `C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe`
+* La validación real `python -c "import sys; print(sys.executable)"` no pudo ejecutarse por la misma causa.
+
+### Azure Functions Core Tools
+
+* La validación real `func --version` no pudo ejecutarse porque `func` no está disponible en `PATH` en este entorno de trabajo.
+
+### Archivos creados
+
+* `.funcignore`
+* `README.md`
+* `function_app.py`
+* `host.json`
+* `local.settings.json.example`
+* `requirements.txt`
+* `services/__init__.py`
+* `services/msg_parser.py`
+* `tests/__init__.py`
+* `tests/test_function_app.py`
+* `tests/test_msg_parser.py`
+
+### Archivos modificados
+
+* `.gitignore`
+* `docs/EVIDENCIAS.md`
+
+### Dependencias
+
+Archivo `requirements.txt` creado con:
+
+* `azure-functions`
+* `extract-msg`
+* `pytest`
+
+### Cambios funcionales implementados
+
+* Se creó una Azure Function Python Programming Model v2 en `function_app.py`.
+* Se definió el endpoint HTTP `POST /api/procesar-msg` con `auth_level=func.AuthLevel.FUNCTION`.
+* Se implementaron validaciones de:
+  * JSON válido;
+  * `fileName`;
+  * `contentBase64`;
+  * extensión `.msg`;
+  * Base64 válido.
+* Se separó el parser MSG en `services/msg_parser.py`.
+* Se implementó uso de archivo temporal para desacoplar el procesamiento de rutas persistentes de Windows.
+* Se agregó limpieza del archivo temporal en `finally`.
+* Se agregó logging sin exponer cuerpo completo, adjuntos ni Base64.
+* Se agregaron tests con mocking para parser y capa HTTP.
+
+### Pruebas ejecutadas
+
+| Comando | Exit code | Resultado |
+| --- | --- | --- |
+| `& .\.venv\Scripts\Activate.ps1; python --version` | `1` | Falló con `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`. |
+| `& .\.venv\Scripts\Activate.ps1; python -c "import sys; print(sys.executable)"` | `1` | Falló con `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`. |
+| `& .\.venv\Scripts\Activate.ps1; func --version` | `1` | Falló porque `func` no se reconoce como comando en el entorno. |
+| `& .\.venv\Scripts\Activate.ps1; python -m pip install -r requirements.txt` | `1` | No pudo ejecutarse porque el intérprete configurado por el `.venv` no existe. |
+| `& .\.venv\Scripts\Activate.ps1; python -m py_compile function_app.py` | `1` | No pudo ejecutarse porque el intérprete configurado por el `.venv` no existe. |
+| `& .\.venv\Scripts\Activate.ps1; python -m py_compile services/msg_parser.py` | `1` | No pudo ejecutarse porque el intérprete configurado por el `.venv` no existe. |
+| `& .\.venv\Scripts\Activate.ps1; python -m pytest -v` | `1` | No pudo ejecutarse porque el intérprete configurado por el `.venv` no existe. |
+| `& .\.venv\Scripts\Activate.ps1; func start` | `1` | Falló porque `func` no se reconoce como comando en el entorno. |
+
+### Resultado de pytest
+
+* No ejecutado realmente.
+* Motivo: el entorno virtual no puede iniciar Python.
+
+### Resultado de compilación Python
+
+* No ejecutado realmente sobre `function_app.py` ni `services/msg_parser.py`.
+* Motivo: el entorno virtual no puede iniciar Python.
+
+### Resultado de descubrimiento de Azure Functions
+
+* No fue posible validar el descubrimiento del endpoint porque `func start` no pudo iniciar.
+* Error real: `func` no se reconoce como comando en el entorno.
+
+### Errores encontrados
+
+* El archivo `.venv/pyvenv.cfg` referencia una instalación base de Python no disponible:
+  * `C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe`
+* No hay `python` accesible en `PATH`.
+* No hay `py` accesible en `PATH`.
+* No hay `func` accesible en `PATH`.
+
+### Pendientes
+
+* Reparar o recrear el entorno local para disponer de un intérprete Python funcional.
+* Asegurar que Azure Functions Core Tools quede accesible como `func`.
+* Ejecutar instalación real de dependencias.
+* Ejecutar compilación real.
+* Ejecutar tests reales.
+* Ejecutar `func start` y confirmar descubrimiento del endpoint.
+* Implementar en una etapa posterior la extracción avanzada de adjuntos y contenidos Base64.
+
+---
+
+## Etapa 3 - Extracción completa del MSG
+
+### Fecha
+
+* 2026-08-13
+
+### HEAD inicial
+
+* `88a621660e4a666c66ac9e2f03492f780946bf3e`
+
+### Branch
+
+* `main`
+
+### Archivos modificados
+
+* `function_app.py`
+* `services/msg_parser.py`
+* `tests/test_function_app.py`
+* `tests/test_msg_parser.py`
+* `README.md`
+* `docs/EVIDENCIAS.md`
+
+### Archivos creados
+
+* Ninguno adicional en esta etapa.
+
+### Baseline pytest
+
+* No fue posible ejecutar un baseline real de `python -m pytest -v` antes de modificar porque el entorno virtual sigue apuntando a un ejecutable Python inexistente.
+* Resultado real de cualquier intento de invocar `python` con `.venv` activo:
+  * `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`
+
+### API de `extract-msg` inspeccionada
+
+Se inspeccionó el código fuente instalado de `extract_msg 0.56.0` en `.venv/Lib/site-packages/extract_msg`.
+
+Propiedades reales utilizadas para la estrategia de attachments:
+
+* `AttachmentBase.name`
+* `AttachmentBase.longFilename`
+* `AttachmentBase.shortFilename`
+* `AttachmentBase.displayName`
+* `AttachmentBase.contentId`
+* `AttachmentBase.cid`
+* `AttachmentBase.extension`
+* `AttachmentBase.mimetype`
+* `AttachmentBase.data`
+* `AttachmentBase.dataType`
+* `SignedAttachment.asBytes`
+* `MSGFile.exportBytes()`
+
+Hallazgos relevantes de tipos:
+
+* `Attachment.data` devuelve `bytes` para adjuntos binarios normales.
+* `CustomAttachment.data` devuelve `bytes` o `None`.
+* `EmbeddedMsgAttachment.data` devuelve `MSGFile`.
+* `SignedAttachment.data` puede devolver `bytes` o `MSGFile`.
+* `SignedAttachment.asBytes` conserva los bytes originales firmados.
+* `WebAttachment.data` lanza `NotImplementedError`.
+* `UnsupportedAttachment.data` devuelve `None`.
+* `BrokenAttachment.data` devuelve `None`.
+
+### Estrategia de attachments
+
+* Se mantuvo la separación de responsabilidades:
+  * `function_app.py`:
+    * HTTP;
+    * validaciones;
+    * normalización Base64;
+    * archivo temporal;
+    * respuesta JSON;
+    * manejo de errores.
+  * `services/msg_parser.py`:
+    * apertura del MSG;
+    * extracción de metadata;
+    * serialización de adjuntos;
+    * normalización de fecha;
+    * manejo de tipos especiales.
+* Se implementó `_get_attachment_filename(attachment, index)` con búsqueda por:
+  * `name`;
+  * `longFilename`;
+  * `shortFilename`;
+  * `displayName`;
+  * `contentId`;
+  * `cid`.
+* Si no hay nombre usable:
+  * `attachment_0.bin`
+  * `attachment_1.bin`
+  * etc.
+* Se sanea el nombre para evitar:
+  * rutas completas;
+  * `../`;
+  * separadores del sistema operativo;
+  * nombres vacíos.
+* Se implementó `_get_attachment_bytes(attachment)` con esta prioridad:
+  * `attachment.data` si ya es `bytes`;
+  * `attachment.data.tobytes()` si es `memoryview`;
+  * `attachment.data.exportBytes()` si el dato es un `MSGFile` embebido;
+  * `attachment.asBytes` como respaldo para adjuntos firmados.
+* Si no se puede convertir un adjunto a bytes:
+  * no se aborta todo el mensaje;
+  * se registra warning;
+  * se devuelve una entrada estructurada con:
+    * `index`;
+    * `fileName`;
+    * `contentType`;
+    * `size`;
+    * `success: false`;
+    * `error`.
+
+### Estrategia MIME
+
+* Primero se usa `attachment.mimetype` si la propiedad existe y trae valor.
+* Si no, se usa `mimetypes.guess_type(filename)`.
+* Si tampoco se puede inferir:
+  * `application/octet-stream`
+
+### Estrategia de nombres
+
+* Los nombres reportados por `extract-msg` se tratan como candidatos, no como rutas confiables.
+* La respuesta JSON expone solamente el nombre final saneado del archivo.
+* El nombre fallback no depende de Windows ni de rutas locales persistentes.
+
+### Cambios funcionales implementados
+
+* `sourceFile` ahora incluye:
+  * `fileName`;
+  * `size`;
+  * `contentBase64`.
+* `parse_msg` ahora devuelve:
+  * metadata del email;
+  * lista completa de adjuntos serializables;
+  * `attachmentCount`.
+* Cada adjunto exitoso devuelve:
+  * `index`;
+  * `fileName`;
+  * `contentType`;
+  * `size`;
+  * `contentBase64`;
+  * `success: true`.
+* La Function ahora normaliza `contentBase64` de entrada removiendo espacios y saltos de línea antes de validar.
+* Se incorporó `MsgParseError` para diferenciar fallas de interpretación del MSG.
+* La respuesta HTTP ahora utiliza:
+  * `400` para input inválido;
+  * `422` para MSG no procesable;
+  * `500` para errores inesperados.
+
+### Tests nuevos o ampliados
+
+Se agregaron o ampliaron tests para cubrir:
+
+* attachment con nombre y bytes;
+* attachment sin nombre;
+* MIME inferido desde extensión;
+* MIME desconocido;
+* cálculo de `size`;
+* Base64 correcto;
+* múltiples attachments;
+* mensaje sin attachments;
+* fecha `datetime`;
+* metadata faltante;
+* uso de `exportBytes()` para MSG embebido;
+* response definitivo de `function_app.py`;
+* respuesta `422` para error de parsing;
+* normalización de Base64 con whitespace.
+
+### Prueba con archivo MSG real
+
+* Se ejecutó:
+  * `rg --files -g '*.msg'`
+* Resultado:
+  * sin archivos `.msg` de ejemplo en el repositorio.
+* Estado:
+  * `Prueba real pendiente: se requiere archivo MSG de ejemplo.`
+
+### Validaciones ejecutadas
+
+| Comando | Exit code | Resultado |
+| --- | --- | --- |
+| `rg --files -g '*.msg'` | `1` | No se encontraron archivos `.msg` de ejemplo en el repositorio. |
+| `& .\.venv\Scripts\Activate.ps1; python -m py_compile function_app.py` | `1` | Falló con `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`. |
+| `& .\.venv\Scripts\Activate.ps1; python -m py_compile services/msg_parser.py` | `1` | Falló con `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`. |
+| `& .\.venv\Scripts\Activate.ps1; python -m pytest -v` | `1` | Falló con `No Python at '"C:\Users\barba\AppData\Local\Programs\Python\Python312\python.exe"'`. |
+| `& .\.venv\Scripts\Activate.ps1; func start` | `1` | Falló porque `func` no se reconoce como comando en el entorno. |
+| `git status --short` | `0` | Se confirmó que no aparecen `local.settings.json` ni `.venv/` en el estado de Git. |
+| `git diff --stat` | `0` | Se obtuvo el resumen actual del diff para esta revisión. |
+
+### Pytest final
+
+* No ejecutado realmente.
+* Motivo:
+  * el entorno virtual no puede iniciar Python.
+
+### Compilación
+
+* No ejecutada realmente.
+* Motivo:
+  * el entorno virtual no puede iniciar Python.
+
+### Function discovery
+
+* No fue posible validar el discovery real del endpoint con `func start`.
+* Error observado:
+  * `func` no se reconoce como comando en el entorno.
+
+### Warnings
+
+* Warning persistente de entorno local:
+  * el `.venv` referencia un Python base inexistente.
+* Warning persistente para desarrollo local:
+  * `func` no está disponible en `PATH`.
+* Warning pendiente de infraestructura:
+  * `AzureWebJobsStorage` vacío no fue modificado en esta etapa.
+* Warning de Git:
+  * conversión `LF -> CRLF` advertida por `git diff --stat` en archivos versionados.
+
+### Pendientes
+
+* Reparar el entorno para poder ejecutar:
+  * `python -m py_compile function_app.py`
+  * `python -m py_compile services/msg_parser.py`
+  * `python -m pytest -v`
+  * `func start`
+* Validar el endpoint local con un `400` real para input inválido una vez que `func` esté disponible.
+* Ejecutar una prueba real con archivo `.msg` de ejemplo.
+* Confirmar el comportamiento exacto de adjuntos `WEB`, `UNSUPPORTED` y `BROKEN` con muestras reales.
+* Validar límites de tamaño por expansión Base64 antes de producción.
