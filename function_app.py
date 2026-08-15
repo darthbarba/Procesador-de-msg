@@ -95,6 +95,15 @@ def procesar_msg(req: func.HttpRequest) -> func.HttpResponse:
                 "date": parsed_email.get("date"),
                 "body": parsed_email.get("body", ""),
             },
+            "company": parsed_email.get(
+                "company",
+                {
+                    "name": "Sin identificar",
+                    "domain": None,
+                    "source": "unknown",
+                    "confidence": "unknown",
+                },
+            ),
             "attachments": parsed_email.get("attachments", []),
             "attachmentCount": attachment_count,
         }

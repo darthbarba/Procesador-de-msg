@@ -63,6 +63,12 @@ def test_procesar_msg_returns_success_response():
             "cc": "cc@empresa.com",
             "date": "2026-08-13T10:30:00",
             "body": "Hola",
+            "company": {
+                "name": "Microsoft",
+                "domain": "microsoft.com",
+                "source": "forwarded_sender",
+                "confidence": "high",
+            },
             "attachments": [
                 {
                     "index": 0,
@@ -85,8 +91,44 @@ def test_procesar_msg_returns_success_response():
     assert payload["sourceFile"]["size"] == len(b"contenido msg")
     assert payload["sourceFile"]["contentBase64"] == content
     assert payload["email"]["subject"] == "Asunto"
+    assert payload["company"] == {
+        "name": "Microsoft",
+        "domain": "microsoft.com",
+        "source": "forwarded_sender",
+        "confidence": "high",
+    }
     assert payload["attachmentCount"] == 1
     assert payload["attachments"][0]["fileName"] == "documento.pdf"
+
+
+def test_procesar_msg_returns_unknown_company_when_parser_does_not_include_it():
+    content = base64.b64encode(b"contenido msg").decode()
+    request = DummyRequest(
+        payload={"fileName": "correo.msg", "contentBase64": content}
+    )
+
+    with patch("function_app.parse_msg") as parse_msg_mock:
+        parse_msg_mock.return_value = {
+            "subject": "Asunto",
+            "sender": "remitente@empresa.com",
+            "to": "destinatario@empresa.com",
+            "cc": "",
+            "date": "2026-08-15T10:00:00",
+            "body": "Hola",
+            "attachments": [],
+            "attachmentCount": 0,
+        }
+        response = procesar_msg(request)
+
+    payload = json.loads(response.get_body().decode("utf-8"))
+
+    assert response.status_code == 200
+    assert payload["company"] == {
+        "name": "Sin identificar",
+        "domain": None,
+        "source": "unknown",
+        "confidence": "unknown",
+    }
 
 
 def test_procesar_msg_returns_400_for_invalid_request():

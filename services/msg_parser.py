@@ -2,13 +2,24 @@ import base64
 import logging
 import mimetypes
 import os
+import re
 from datetime import date, datetime
 from typing import Any
 
 import extract_msg
 
+from services.company_detector import detect_company
+
 
 LOGGER = logging.getLogger(__name__)
+ALLOWED_ATTACHMENT_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".xlsx",
+    ".png",
+}
+INLINE_PNG_NAME_PATTERN = re.compile(r"^image\d+\.png$", re.IGNORECASE)
+INLINE_PNG_TERMS = ("logo", "signature", "firma", "spacer")
 
 
 class MsgParseError(Exception):
@@ -114,6 +125,42 @@ def _get_attachment_mime_type(attachment: Any, filename: str) -> str:
     return "application/octet-stream"
 
 
+def _get_attachment_extension(filename: str) -> str:
+    _, extension = os.path.splitext(filename)
+    return extension.lower()
+
+
+def _is_allowed_extension(filename: str) -> bool:
+    extension = _get_attachment_extension(filename)
+    return bool(extension) and extension in ALLOWED_ATTACHMENT_EXTENSIONS
+
+
+def _is_inline_or_logo_png(attachment: Any, filename: str) -> bool:
+    if _get_attachment_extension(filename) != ".png":
+        return False
+
+    if getattr(attachment, "hidden", False) is True:
+        return True
+
+    normalized_name = filename.lower()
+    if INLINE_PNG_NAME_PATTERN.match(normalized_name):
+        return True
+
+    return any(term in normalized_name for term in INLINE_PNG_TERMS)
+
+
+def _should_include_attachment(attachment: Any, index: int) -> bool:
+    file_name = _get_attachment_filename(attachment, index)
+
+    if not _is_allowed_extension(file_name):
+        return False
+
+    if _is_inline_or_logo_png(attachment, file_name):
+        return False
+
+    return True
+
+
 def _serialize_attachment(attachment: Any, index: int) -> dict:
     file_name = _get_attachment_filename(attachment, index)
 
@@ -162,7 +209,9 @@ def parse_msg(file_path: str) -> dict:
         attachments = [
             _serialize_attachment(attachment, index)
             for index, attachment in enumerate(msg.attachments or [])
+            if _should_include_attachment(attachment, index)
         ]
+        company = detect_company(msg.sender, msg.subject, msg.body)
 
         return {
             "subject": msg.subject or "",
@@ -171,6 +220,7 @@ def parse_msg(file_path: str) -> dict:
             "cc": msg.cc or "",
             "date": _serialize_date(msg.date),
             "body": msg.body or "",
+            "company": company,
             "attachments": attachments,
             "attachmentCount": len(attachments),
         }

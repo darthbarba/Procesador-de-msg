@@ -744,3 +744,105 @@ La prueba real confirmó:
 
 * La evidencia visual ya se encuentra almacenada en `docs/evidencias/`.
 * Esta etapa documenta una prueba exitosa del circuito completo, sin modificar código ni infraestructura.
+
+### Detección determinística de empresa
+
+* Objetivo:
+  * agregar un detector determinístico de empresa/proveedor a partir de `sender`, `subject` y `body`, sin IA, APIs externas ni listas manuales de proveedores.
+* Reglas:
+  * primero analizar encabezados reenviados en el body;
+  * reconocer líneas que comiencen con `De:` o `From:`;
+  * extraer emails con regex estándar;
+  * elegir el primer remitente externo válido en orden de aparición;
+  * si no hay candidato válido en body, evaluar `sender`;
+  * no inferir empresa a partir de palabras sueltas del subject;
+  * devolver `source` solo como `forwarded_sender`, `sender` o `unknown`;
+  * devolver `confidence` solo como `high` o `unknown`.
+* Dominios internos:
+  * `iapserseguros.seg.ar`
+  * `institutoseguro.com.ar`
+* Dominios genéricos:
+  * `gmail.com`
+  * `hotmail.com`
+  * `outlook.com`
+  * `live.com`
+  * `yahoo.com`
+  * `icloud.com`
+  * `aol.com`
+  * `proton.me`
+  * `protonmail.com`
+* Estrategia forwarded sender:
+  * priorizar remitentes originales reenviados por sobre el `sender` del MSG;
+  * si un correo fue reenviado por personal interno de IAPSER pero el body contiene un remitente externo empresarial válido, usar ese remitente externo como empresa.
+* Tests:
+  * se agregó `tests/test_company_detector.py`;
+  * cubre sender externo, sender interno con remitente reenviado externo, dominios genéricos, dominios internos, `.com.ar`, dominios con guion, prioridad de `forwarded_sender`, mayúsculas/minúsculas, `body` nulo o vacío, `sender` nulo y nombre seguro para SharePoint.
+* Limitaciones:
+  * no intenta inferir razón social legal exacta;
+  * no analiza el subject como fuente de empresa en esta primera versión;
+  * depende de evidencia explícita de email en `body` o `sender`;
+  * no está diseñado aún para discriminar subcasos más complejos de cadenas de reenvío no estándar.
+* Estado de integración:
+  * todavía NO está integrado al JSON público de Azure Function.
+
+### Filtrado determinístico de attachments
+
+* Objetivo:
+  * reducir el array público `attachments` a adjuntos relevantes antes de serializar contenido y Base64.
+* Whitelist:
+  * `.pdf`
+  * `.docx`
+  * `.xlsx`
+  * `.png`
+* Exclusión por extensión:
+  * cualquier extensión fuera de la whitelist se descarta;
+  * la comparación es case-insensitive.
+* Exclusión de archivos sin extensión:
+  * nombres sin sufijo de extensión como `07097587 - 11_12_2020` se descartan.
+* Estrategia para logos e inline:
+  * los `.png` se conservan solamente si no presentan señales de inline/logo/firma;
+  * se excluyen `.png` con propiedad real `hidden=True` observada en adjuntos inline reales;
+  * además se excluyen patrones automáticos `imageNNN.png`;
+  * además se excluyen nombres que contengan `logo`, `signature`, `firma` o `spacer`, sin importar mayúsculas/minúsculas.
+* API real de `extract-msg` inspeccionada:
+  * se verificó en adjuntos reales la existencia de `name`, `longFilename`, `shortFilename`, `displayName`, `contentId`, `cid`, `mimetype`, `extension`, `type`, `hidden` y `renderingPosition`;
+  * en los adjuntos inspeccionados, `hidden=True` apareció en `image001.png`, `image002.png`, `image003.png` e `image004.png`;
+  * en los adjuntos inspeccionados, `hidden=False` apareció en PDFs reales conservables;
+  * `inline`, `isInline`, `isHidden` y `attachmentFlags` no estuvieron disponibles en los objetos reales inspeccionados;
+  * `contentId`, `cid` y `renderingPosition` existen, pero no se usaron como filtro principal porque también aparecen en adjuntos válidos.
+* Filtrado previo a Base64:
+  * la decisión de conservar o descartar se realiza antes de leer bytes, codificar Base64 y construir el objeto final del adjunto.
+* `attachmentCount`:
+  * ahora representa `len(attachments)` después del filtrado.
+* Tests:
+  * se agregaron casos para whitelist permitida, exclusiones por extensión, exclusión de archivos sin extensión, PNG inline por `hidden=True`, nombres automáticos `imageNNN.png`, nombres con `logo` y `firma`, mezcla de adjuntos permitidos y descartados, y validación de `attachmentCount` posterior al filtrado.
+
+### Integración del bloque company
+
+* Objetivo:
+  * incorporar la detección determinística de empresa al flujo real de parsing MSG y exponer el resultado en el JSON público de la Azure Function.
+* Integración en parser:
+  * `services/msg_parser.py` ahora ejecuta `detect_company(sender, subject, body)` durante `parse_msg(...)`;
+  * el resultado se agrega como bloque `company` junto a `subject`, `sender`, `to`, `cc`, `date`, `body`, `attachments` y `attachmentCount`.
+* Contrato JSON público:
+  * la Azure Function ahora expone `company` como bloque top-level;
+  * `sourceFile` se mantiene sin cambios en esta etapa;
+  * `attachments` continúa devolviendo solo adjuntos filtrados;
+  * `attachmentCount` continúa representando `len(attachments)` después del filtrado.
+* Estructura resultante:
+  * `success`
+  * `sourceFile`
+  * `email`
+  * `company`
+  * `attachments`
+  * `attachmentCount`
+* Fallback:
+  * si el parser no informara `company`, `function_app.py` devuelve:
+  * `name = "Sin identificar"`
+  * `domain = null`
+  * `source = "unknown"`
+  * `confidence = "unknown"`
+* Tests:
+  * se agregaron validaciones para confirmar que `parse_msg(...)` devuelve `company`;
+  * se agregaron validaciones para confirmar que la respuesta HTTP de `function_app.py` expone `company`;
+  * se cubrió el caso `Sin identificar` en la capa HTTP.
